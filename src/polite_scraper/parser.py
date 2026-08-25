@@ -1,13 +1,12 @@
 
 from urllib.parse import urljoin
-
 from bs4 import BeautifulSoup
+from datetime import datetime
 
-from polite_scraper.config import BASE_URL, PAGE_COUNT
 from polite_scraper.fetcher import fetch_page
 
 
-def _book_links(soup: BeautifulSoup, page_url: str) -> list[str]:
+def book_links(soup: BeautifulSoup, page_url: str) -> list[str]:
     links: list[str] = []
     for article in soup.select("article.product_pod"):
         link = article.select_one("h3 a")
@@ -17,32 +16,34 @@ def _book_links(soup: BeautifulSoup, page_url: str) -> list[str]:
     return links
 
 
-def _next_page_url(soup: BeautifulSoup, page_url: str) -> str | None:
+def next_page_url(soup: BeautifulSoup, page_url: str) -> str | None:
     link = soup.select_one("li.next a")
     if link is None:
         return None
     return urljoin(page_url, link["href"])
 
+def print_record(item_url: str, source_page: str | None = None) -> None:
+    detail_page = BeautifulSoup(fetch_page(item_url), "html.parser")
+    product_main = detail_page.select_one("div.col-sm-6.product_main")
+    title = product_main.select_one("h1").text.strip()
+    product_url = item_url
+    price = product_main.select_one("p.price_color").text.strip()
+    availability = product_main.select_one("p.availability").text.strip()
+    rating = product_main.select_one("p.star-rating")["class"][1]
+    description_el = detail_page.select_one("div#product_description + p")
+    decscription = description_el.text.strip() if description_el else None
+    fetched_at = datetime.now()
 
-def parser() -> list[str]:
-    book_links: list[str] = []
-    page_url: str | None = BASE_URL
-    catalogue_pages = 0
-    discovered = 0
+    record = {
+        "title": title,
+        "product_url": product_url,
+        "price_text": price,
+        "availability_text": availability,
+        "rating_text": rating,
+        "description": decscription,
+        "source_page": source_page,
+        "fetched_at": fetched_at.isoformat(),
+    }
 
-    while page_url is not None and catalogue_pages < PAGE_COUNT:
-        content = fetch_page(page_url)
-        soup = BeautifulSoup(content, "html.parser")
-
-        page_links = _book_links(soup, page_url)
-        discovered += len(page_links)
-        book_links.extend(page_links)
-
-        catalogue_pages += 1
-        page_url = _next_page_url(soup, page_url) if catalogue_pages < PAGE_COUNT else None
-
-    # Drop duplicate book links, keeping the order they first appeared.
-    unique_urls = list(dict.fromkeys(book_links))
-
-    print(f"catalogue_pages={catalogue_pages} discovered={discovered} unique_urls={len(unique_urls)}")
-    return unique_urls
+    # print(product_main)
+    print(record)

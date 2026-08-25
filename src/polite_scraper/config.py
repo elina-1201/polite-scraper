@@ -6,6 +6,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Data directories (both gitignored)
 CACHE_DIR = PROJECT_ROOT / "cache"
+CACHED_PAGES_DIR = CACHE_DIR / "pages"
+CACHED_ITEMS_DIR = CACHE_DIR / "items"
 OUTPUT_DIR = PROJECT_ROOT / "output"
 
 # Network 
