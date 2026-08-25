@@ -1,0 +1,25 @@
+# Virtual environment
+.venv/
+
+# Python cache/bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Distribution/packaging
+build/
+dist/
+*.egg-info/
+
+# Environment/secrets
+.env
+
+# Editor/OS cruft
+.vscode/
+.idea/
+.DS_Store
+
+# Project-specific: scraped output / logs
+output/
+cache/
+*.log
