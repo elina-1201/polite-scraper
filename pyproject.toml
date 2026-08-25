@@ -1,0 +1,15 @@
+[project]
+name = "polite-scraper"
+version = "0.1.0"
+description = "A polite web scraper for Books to Scrape"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.34.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+polite-scraper = "polite_scraper.main:main"
