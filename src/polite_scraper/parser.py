@@ -1,10 +1,8 @@
 
+import re
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 from datetime import datetime
-
-from polite_scraper.fetcher import fetch_page
-
 
 def book_links(soup: BeautifulSoup, page_url: str) -> list[str]:
     links: list[str] = []
@@ -22,28 +20,24 @@ def next_page_url(soup: BeautifulSoup, page_url: str) -> str | None:
         return None
     return urljoin(page_url, link["href"])
 
-def print_record(item_url: str, source_page: str | None = None) -> None:
-    detail_page = BeautifulSoup(fetch_page(item_url), "html.parser")
-    product_main = detail_page.select_one("div.col-sm-6.product_main")
+def raw_record(soup: BeautifulSoup, product_url: str, source_page: str) -> dict:
+    """Extract a raw record from an already-fetched detail page soup (pure, no I/O)."""
+    product_main = soup.select_one("div.col-sm-6.product_main")
+
     title = product_main.select_one("h1").text.strip()
-    product_url = item_url
-    price = product_main.select_one("p.price_color").text.strip()
+    price_text = product_main.select_one("p.price_color").text.strip()
     availability = product_main.select_one("p.availability").text.strip()
     rating = product_main.select_one("p.star-rating")["class"][1]
-    description_el = detail_page.select_one("div#product_description + p")
-    decscription = description_el.text.strip() if description_el else None
-    fetched_at = datetime.now()
+    description_el = soup.select_one("div#product_description + p")
+    description = description_el.text.strip() if description_el else None
 
-    record = {
+    return {
         "title": title,
         "product_url": product_url,
-        "price_text": price,
+        "price_text": price_text,
         "availability_text": availability,
         "rating_text": rating,
-        "description": decscription,
+        "description": description,
         "source_page": source_page,
-        "fetched_at": fetched_at.isoformat(),
+        "fetched_at": datetime.now().isoformat(),
     }
-
-    # print(product_main)
-    print(record)

@@ -3,6 +3,7 @@ import hashlib
 from pathlib import Path
 from urllib.parse import urlparse
 
+from bs4 import BeautifulSoup
 import requests
 
 from polite_scraper.config import BASE_URL, CACHED_ITEMS_DIR, CACHED_PAGES_DIR, DELAY_SECONDS, TIMEOUT, USER_AGENT
@@ -47,12 +48,12 @@ def _politeness_delay() -> None:
     _last_request_time = time.monotonic()
 
 
-def fetch_page(url: str = BASE_URL) -> str:
+def fetch_page(url: str = BASE_URL) -> BeautifulSoup:
     output = _cache_path_for(url)
 
     if output.exists():
         # print(f"CACHE HIT {output}")
-        return output.read_text(encoding="utf-8")
+        return BeautifulSoup(output.read_text(encoding="utf-8"), "html.parser")
 
     print(f"FETCH {url}")
     _politeness_delay()
@@ -63,6 +64,7 @@ def fetch_page(url: str = BASE_URL) -> str:
     response = session.get(url, timeout=TIMEOUT)
     response.raise_for_status()
 
+    response.encoding = "utf-8"
     html = response.text
 
     # Create the cache folder if it doesn't exist, then save the HTML.
@@ -70,4 +72,4 @@ def fetch_page(url: str = BASE_URL) -> str:
     output.write_text(html, encoding="utf-8")
     print(f"Saved {output}")
 
-    return html
+    return BeautifulSoup(html, "html.parser")

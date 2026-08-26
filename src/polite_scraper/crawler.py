@@ -12,7 +12,7 @@ def collect_urls() -> dict[str, str]:
     catalogue_pages = 0
 
     while page_url is not None and catalogue_pages < PAGE_COUNT:
-        soup = BeautifulSoup(fetch_page(page_url), "html.parser")
+        soup = fetch_page(page_url)
         for link in book_links(soup, page_url):
             collected.setdefault(link, page_url)  # keep earliest source page
         catalogue_pages += 1
