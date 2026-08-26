@@ -4,6 +4,12 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 from datetime import datetime
 
+def parse_price(price_text: str) -> float:
+    """Extract a numeric GBP value from a price string like ``£51.77``."""
+    match = re.search(r"[\d.]+", price_text)
+    return float(match.group()) if match else 0.0
+
+
 def book_links(soup: BeautifulSoup, page_url: str) -> list[str]:
     links: list[str] = []
     for article in soup.select("article.product_pod"):
@@ -35,6 +41,7 @@ def raw_record(soup: BeautifulSoup, product_url: str, source_page: str) -> dict:
         "title": title,
         "product_url": product_url,
         "price_text": price_text,
+        "price_gbp": parse_price(price_text),
         "availability_text": availability,
         "rating_text": rating,
         "description": description,

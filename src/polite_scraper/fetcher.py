@@ -1,15 +1,89 @@
 import time
 import hashlib
-from pathlib import Path
-from urllib.parse import urlparse
-
-from bs4 import BeautifulSoup
 import requests
 
-from polite_scraper.config import BASE_URL, CACHED_ITEMS_DIR, CACHED_PAGES_DIR, DELAY_SECONDS, TIMEOUT, USER_AGENT
+from polite_scraper.config import BASE_URL, CACHED_ITEMS_DIR, CACHED_PAGES_DIR, DELAY_SECONDS, MAX_RETRIES, RETRY_DELAY_SECONDS, TIMEOUT, USER_AGENT
+from pathlib import Path
+from urllib.parse import urlparse
+from bs4 import BeautifulSoup
 
-# Time of the last real HTTP request, used to space requests out politely.
+
+# Time of the last real HTTP request, used to space requests out.
 _last_request_time = 0.0
+_fetch_attempts = 0
+_cache_hits = 0
+
+
+def reset_stats() -> None:
+    """Zero out the fetch/cache counters before a run."""
+    global _fetch_attempts, _cache_hits
+    _fetch_attempts = 0
+    _cache_hits = 0
+
+
+def get_stats() -> dict:
+    """Return the accumulated fetch/cache counters for the run."""
+    return {"pages_fetched": _fetch_attempts, "cache_hits": _cache_hits}
+
+
+def fetch_page(url: str = BASE_URL) -> BeautifulSoup:
+    global _fetch_attempts, _cache_hits
+    
+    output = _cache_path_for(url)
+
+    if output.exists():
+        _cache_hits += 1
+        return BeautifulSoup(output.read_text(encoding="utf-8"), "html.parser")
+
+    print(f"FETCH {url}")
+    _politeness_delay()
+    _fetch_attempts += 1
+
+    session = requests.Session()
+    session.headers["User-Agent"] = USER_AGENT
+
+    response = _get_with_retry(session, url)
+    
+    response.encoding = "utf-8"
+    html = response.text
+
+    # Create the cache folder if it doesn't exist, then save the HTML.
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(html, encoding="utf-8")
+    print(f"Saved {output}")
+
+    return BeautifulSoup(html, "html.parser")
+
+
+def _get_with_retry(session: requests.Session, url: str) -> requests.Response:
+    """Return the HTTP response, retrying once on transient failures.
+
+    Retries only timeouts, connection errors, and 5xx responses.
+    4xx (e.g. 404, 403) are re-raised immediately and never retried.
+    """
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            response = session.get(url, timeout=TIMEOUT)
+            response.raise_for_status()
+            return response
+
+        except requests.HTTPError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            if status is not None and _is_retryable_status(status) and attempt < MAX_RETRIES:
+                print(f"HTTP {status} for {url}; retrying...")
+                time.sleep(RETRY_DELAY_SECONDS)
+                continue
+            raise
+
+        except (requests.Timeout, requests.ConnectionError):
+            if attempt < MAX_RETRIES:
+                print(f"Network error for {url}; retrying...")
+                time.sleep(RETRY_DELAY_SECONDS)
+                continue
+            raise
+
+def _is_retryable_status(status: int) -> bool:
+    return 500 <= status < 600
 
 
 def _cache_path_for(url: str) -> Path:
@@ -46,30 +120,3 @@ def _politeness_delay() -> None:
         time.sleep(wait)
 
     _last_request_time = time.monotonic()
-
-
-def fetch_page(url: str = BASE_URL) -> BeautifulSoup:
-    output = _cache_path_for(url)
-
-    if output.exists():
-        # print(f"CACHE HIT {output}")
-        return BeautifulSoup(output.read_text(encoding="utf-8"), "html.parser")
-
-    print(f"FETCH {url}")
-    _politeness_delay()
-
-    session = requests.Session()
-    session.headers["User-Agent"] = USER_AGENT
-
-    response = session.get(url, timeout=TIMEOUT)
-    response.raise_for_status()
-
-    response.encoding = "utf-8"
-    html = response.text
-
-    # Create the cache folder if it doesn't exist, then save the HTML.
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(html, encoding="utf-8")
-    print(f"Saved {output}")
-
-    return BeautifulSoup(html, "html.parser")

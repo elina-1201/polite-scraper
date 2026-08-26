@@ -18,5 +18,8 @@ def collect_urls() -> dict[str, str]:
         catalogue_pages += 1
         page_url = next_page_url(soup, page_url) if catalogue_pages < PAGE_COUNT else None
 
+    # Test hook: simulate a broken/unreachable detail link 
+    collected["https://books.toscrape.com/catalogue/definitely-not-a-real-book_999999/index.html"] = BASE_URL
+
     print(f"detail_pages={len(collected)}")
     return collected

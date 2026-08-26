@@ -1,10 +1,8 @@
-# normalizer.py
-import re
+# models.py
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum
 from pydantic import BaseModel, model_validator
-
-RATING_MAP = {"One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
 
 
 class Rating(IntEnum):
@@ -13,6 +11,10 @@ class Rating(IntEnum):
     Three = 3
     Four = 4
     Five = 5
+
+
+# Single source of truth for the (name -> value) mapping, derived from Rating.
+RATING_MAP = {member.name: member.value for member in Rating}
 
 
 class BookRecord(BaseModel):
@@ -31,15 +33,25 @@ class BookRecord(BaseModel):
     @classmethod
     def derive_typed_fields(cls, data):
         """Convert raw text fields into typed values before validation."""
-        
         if isinstance(data, dict):
             data = dict(data)
-            match = re.search(r"[\d.]+", data.get("price_text", ""))
-            if match:
-                data["price_gbp"] = float(match.group())
             data["rating"] = RATING_MAP.get(data.get("rating_text"), 0)
         return data
 
 
-def normalize_record(record: dict) -> dict:
-    return BookRecord.model_validate(record).model_dump(mode="json")
+@dataclass
+class RunSummary:
+    start_time: str
+    duration: float
+    pages_fetched: int
+    cache_hits: int
+    valid_records: int
+    invalid_records: int
+    failed_pages: int
+
+@dataclass
+class RunResult:
+    books: list[dict] = field(default_factory=list)
+    errors: list[dict] = field(default_factory=list)
+    logs: list[dict] = field(default_factory=list)
+    summary: RunSummary | None = None

@@ -1,6 +1,6 @@
 from pydantic import ValidationError
 
-from polite_scraper.normalizer import normalize_record
+from polite_scraper.models import BookRecord
 
 
 def error_entry(raw: dict, exc: ValidationError) -> dict:
@@ -16,6 +16,6 @@ def error_entry(raw: dict, exc: ValidationError) -> dict:
 def validate_record(raw: dict) -> tuple[dict | None, dict | None]:
     """Validate a raw record."""
     try:
-        return normalize_record(raw), None
+        return BookRecord.model_validate(raw).model_dump(mode="json"), None
     except ValidationError as exc:
         return None, error_entry(raw, exc)

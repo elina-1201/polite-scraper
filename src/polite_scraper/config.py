@@ -16,3 +16,5 @@ USER_AGENT = "FlyRankInternship-A9/1.0 (https://github.com/elina-1201/polite-scr
 TIMEOUT = 10
 PAGE_COUNT = 3          # first three catalogue pages (60 books)
 DELAY_SECONDS = 1.0     # politeness delay between requests
+MAX_RETRIES = 1
+RETRY_DELAY_SECONDS = 2.0
